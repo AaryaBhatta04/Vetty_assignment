@@ -9,18 +9,52 @@ def coingecko(path,params=None):
     r.raise_for_status()
     return r.json()
 
+def get_page():
+    try:
+        page_num=int(request.args.get("page_num",1))
+    except (TypeError,ValueError):
+        page_num=1
+    try:
+        per_page=int(request.args.get("per_page",10))
+    except (TypeError,ValueError):
+        per_page=10
+    
+    return page_num,per_page
+
+def paginate(items,page_num,per_page):
+    total_items=len(items)
+    total_pages=(total_items+per_page-1)//per_page
+    start=(page_num-1)*per_page
+    end=start+per_page
+    page_items=items[start:end]
+    return{
+        "page_num":page_num,
+        "per_page":per_page,
+        "total_items":total_items,
+        "total_pages":total_pages,
+        "items":page_items
+    }
+
 @app.route("/api/coins")
 def coins():
-    return jsonify(coingecko("/coins/list"))
+    # return jsonify(coingecko("/coins/list")) -> This was before pagination
+    page_num,per_page=get_page()
+    coins=coingecko("/coins/list")
+    return jsonify(paginate(coins,page_num,per_page))
 
 @app.route("/api/categories")
 def categories():
-    return jsonify(coingecko("/coins/categories"))
+    # return jsonify(coingecko("/coins/categories")) -> This was before pagination
+    page_num,per_page=get_page()
+    cats=coingecko("/coins/categories")
+    return jsonify(paginate(cats,page_num,per_page))
 
 @app.route("/api/coins/filter")
 def filter_coins():
     ids=request.args.get("ids")
     category_param=request.args.get("category")
+    
+    page_num,per_page=get_page()
     
     categories=[]
     if category_param:
@@ -68,7 +102,7 @@ def filter_coins():
             "in canadian":canada_map.get(id),
         })
     
-    return jsonify(output)
+    return jsonify(paginate(output,page_num,per_page))
     
 if __name__=="__main__":
     app.run(port=5000,debug=True)
