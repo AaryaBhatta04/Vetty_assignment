@@ -12,13 +12,16 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "e4f7c2b91f3a4d7e8b2a6f915c3d98f04b7e6
 JWT_ALGO="HS256"
 JWT_EXP_MINUTES=60
 
+# Hard coded user
 USERS={"Aaryaman Bhattacharya": "Aaryaman@04"}
 
+# This sends a GET request to given API and returns JSON
 def coingecko(path,params=None):
     r=requests.get(BASE+path,params=params,timeout=10)
     r.raise_for_status()
     return r.json()
 
+# For getting the pagination details from query
 def get_page():
     try:
         page_num=int(request.args.get("page_num",1))
@@ -31,6 +34,7 @@ def get_page():
     
     return page_num,per_page
 
+# Returns dictionary containing paginated items
 def paginate(items,page_num,per_page):
     total_items=len(items)
     total_pages=(total_items+per_page-1)//per_page
@@ -45,6 +49,7 @@ def paginate(items,page_num,per_page):
         "items":page_items
     }
 
+# For creating JWT token
 def create_token(username):
     now=datetime.utcnow()
     payload={
@@ -58,9 +63,11 @@ def create_token(username):
         token=token.decode("utf-8")
     return token
 
+# Decoding and validate the token
 def decode_token(token):
     return jwt.decode(token,JWT_SECRET,algorithms=[JWT_ALGO])
 
+# This is for protecting the routes by requiring a valid JWT token
 def require_jwt(f):
     @wraps(f)
     def wrapper(*args,**kwargs):
@@ -79,7 +86,7 @@ def require_jwt(f):
         return f(*args,**kwargs)
     return wrapper
 
-
+# Authenticate users..
 @app.route("/auth/login",methods=["POST"])
 def login():
     # expects JSON: {"username": "...", "password": "..."}
@@ -94,6 +101,7 @@ def login():
     token=create_token(username)
     return jsonify({"token":token})
 
+# Returns list of all coins
 @app.route("/api/coins")
 @require_jwt
 def coins():
@@ -102,6 +110,7 @@ def coins():
     coins=coingecko("/coins/list")
     return jsonify(paginate(coins,page_num,per_page))
 
+# Return list of all crypto categories
 @app.route("/api/categories")
 @require_jwt
 def categories():
@@ -110,6 +119,7 @@ def categories():
     cats=coingecko("/coins/categories")
     return jsonify(paginate(cats,page_num,per_page))
 
+# Returns data for coins and categories as asked in query
 @app.route("/api/coins/filter")
 @require_jwt
 def filter_coins():
@@ -129,6 +139,7 @@ def filter_coins():
     if ids:
         params_common["ids"]=ids
     
+    # This is for mainly for fetching the Indian and Canadian Dollar details as asked
     def dothing(currency):
         results=[]
         if categories:
